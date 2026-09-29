@@ -1,0 +1,37 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools >= 77", "wheel"]
+
+[project]
+name = "elabftw-mcp"
+version = "0.1.0"
+description = "Standalone MCP server for eLabFTW (MCP 2026-07-28, stateless) with a hosted multi-user proxy"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Kolja Knodel" }]
+keywords = ["mcp", "elabftw", "eln", "model-context-protocol"]
+dependencies = [
+    "mcp[cli]>=2.2.0,<3",
+    "httpx>=0.28.0",
+    "pyyaml>=6.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+elabftw-mcp = "elabftw_mcp.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "live: tests that talk to a real eLabFTW instance (needs a token file)",
+]

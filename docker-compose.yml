@@ -1,0 +1,22 @@
+# Hosted multi-user eLabFTW MCP server.
+#   MCP_JWT_SECRET must be set, otherwise token signing fails.
+services:
+  elabftw-mcp:
+    build: .
+    image: elabftw-mcp:latest
+    restart: unless-stopped
+    environment:
+      MCP_JWT_SECRET: ${MCP_JWT_SECRET:?set MCP_JWT_SECRET}
+      MCP_TOKEN_EXPIRY_DAYS: "30"
+      ELABFTW_MCP_CONFIG: /app/config.yml
+      ELABFTW_MCP_AUDIT_LOG: /app/logs/audit.jsonl
+      # AI tools (optional): any OpenAI-compatible endpoint
+      ELABFTW_MCP_AI_KEY: ${ELABFTW_MCP_AI_KEY:-}
+      ELABFTW_MCP_AI_BASE_URL: ${ELABFTW_MCP_AI_BASE_URL:-}
+      ELABFTW_MCP_AI_MODEL: ${ELABFTW_MCP_AI_MODEL:-gpt-4o}
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+      - ./logs:/app/logs
+    ports:
+      - "127.0.0.1:8081:8081"
+    mem_limit: 512m

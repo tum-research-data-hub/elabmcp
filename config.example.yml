@@ -1,0 +1,64 @@
+# Config for the local/hosted eLabFTW MCP server. Copy to config.yml and adjust.
+server:
+  name: "elabftw"
+  version: "0.1.0"
+  host: "127.0.0.1"
+  port: 8081
+  url_prefix: "/el"
+
+elabftw:
+  # Only used in stdio/local mode; hosted mode takes instance URL and key from the
+  # personal MCP URL (register flow).
+  base_url: "https://elntest.ub.tum.de"
+  api_key: ""
+  timeout: 30
+  verify_tls: true
+
+features:
+  write_enabled: true
+  ai_review: true
+  tag_suggestions: true
+  metadata_suggestions: true
+  write_comments: true
+  write_tags: true
+  write_metadata: true
+  write_links: true
+  write_create: true
+  write_update: true
+  allow_body_overwrite: true
+  write_steps: true
+  inventory_tools: true
+  write_inventory: true
+  compounds_tools: true
+  write_compounds: true
+  low_level_tools: false
+  cache_ttl_seconds: 300
+  bulk_links_max_pairs: 100
+  links_network_default_max_depth: 2
+  links_network_default_max_nodes: 200
+  links_network_default_max_edges: 500
+  links_network_default_max_per_node: 50
+
+ai:
+  # OpenAI-compatible endpoint for the AI tools; an empty api_key disables them and
+  # the tools answer with the upstream placeholder wording instead.
+  model: "gpt-4o"
+  base_url: ""
+  api_key: ""
+  max_tokens: 2048
+  temperature: 0.3
+
+provenance:
+  require_ai_header: true
+  ai_header_prefix: "[AI-GENERATED]"
+  include_trace_id: true
+  include_model_name: true
+
+audit:
+  enabled: true
+  log_path: "logs/audit.jsonl"
+  level: "info"
+
+storage:
+  tmp_dir: "/tmp/elabftw-mcp"
+  cache_max_mb: 100
