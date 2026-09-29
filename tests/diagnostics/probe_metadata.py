@@ -6,7 +6,8 @@ import pathlib
 
 import httpx
 
-ROOT = pathlib.Path(__file__).resolve().parents[2]
+ROOT = next((p for p in pathlib.Path(__file__).resolve().parents if (p / ".elab_key").exists()),
+            pathlib.Path(__file__).resolve().parents[2])
 BASE = "https://elntest.ub.tum.de/api/v2"
 KEY = (ROOT / ".elab_key").read_text(encoding="utf-8").strip()
 H = {"Authorization": KEY}

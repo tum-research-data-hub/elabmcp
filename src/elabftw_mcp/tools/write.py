@@ -16,7 +16,7 @@ from ..errors import ElabFTWError
 from ..instance import mcp
 from ..policy import require
 from ..provenance import compose_updated_body, coerce_content_type, merge_metadata_provenance
-from ..responses import as_json
+from ..responses import as_json, match_tags, normalize_tags
 from ..validation import one_of, require as require_condition, validate_string_array
 from ._common import client, team_caps
 
@@ -36,10 +36,15 @@ CREATE_HINT = ("Before calling this tool, discover valid IDs with list_experimen
 
 
 async def _apply_tags(api, entity_type: str, entity_id: int, tags: Any) -> list[str]:
+    """Write tags and return what the server actually stored (it reports them as "a|b")."""
     cleaned = validate_string_array(tags, "tags") or []
     if cleaned:
         await api.create(f"{entity_type}/{entity_id}/tags", {"tags": cleaned})
-    return cleaned
+        after = await api.get_json(f"{entity_type}/{entity_id}", cacheable=False)
+        stored = normalize_tags((after or {}).get("tags")) if isinstance(after, dict) else []
+        matches = match_tags(cleaned, stored)
+        return matches or ([] if stored else cleaned)
+    return []
 
 
 async def _force_template_policy(api) -> bool:

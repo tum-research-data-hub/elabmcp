@@ -15,7 +15,7 @@ from ..config import get_config
 from ..errors import ElabFTWError
 from ..instance import mcp
 from ..policy import require
-from ..responses import as_json
+from ..responses import as_json, match_tags, normalize_tags
 from ..validation import validate_string_array
 from ._common import client, safe_fetch
 
@@ -29,7 +29,7 @@ REVIEW_USER = """Review this entry and return JSON with exactly these keys:
  "completeness_score": integer 0-100}
 
 Entry:
-{context}
+<<CONTEXT>>
 """
 
 TAGS_SYSTEM = ("You suggest concise tags for electronic lab notebook entries. Reuse existing tag "
@@ -37,7 +37,7 @@ TAGS_SYSTEM = ("You suggest concise tags for electronic lab notebook entries. Re
 TAGS_USER = """Suggest at most 10 tags for this entry. Return JSON: {"tags": [string, ...]}
 Prefer 1-3 word tags, no duplicates, no punctuation.
 
-{context}
+<<CONTEXT>>
 """
 
 METADATA_SYSTEM = ("You propose structured metadata (custom fields) for electronic lab notebook "
@@ -46,7 +46,7 @@ METADATA_SYSTEM = ("You propose structured metadata (custom fields) for electron
 METADATA_USER = """Propose at most 10 custom fields for this entry. Return JSON:
 {"fields": [{"key": string, "value": string, "type": "text"|"number"|"date"|"url"}]}
 
-{context}
+<<CONTEXT>>
 """
 
 
@@ -88,7 +88,7 @@ async def review_experiment(id: int) -> str:
         return as_json(payload)
 
     context = ai.entity_context(entity, extra=extra)
-    answer = await ai.chat(REVIEW_SYSTEM, REVIEW_USER.format(context=context))
+    answer = await ai.chat(REVIEW_SYSTEM, REVIEW_USER.replace("<<CONTEXT>>", context))
     payload["review"] = ai.parse_json_block(answer)
     payload["status"] = "ok"
     return as_json(payload)
@@ -113,7 +113,7 @@ async def suggest_tags(entity_type: str, id: int) -> str:
         payload["status"] = "placeholder"
         return as_json(payload)
 
-    answer = await ai.chat(TAGS_SYSTEM, TAGS_USER.format(context=ai.entity_context(entity)),
+    answer = await ai.chat(TAGS_SYSTEM, TAGS_USER.replace("<<CONTEXT>>", ai.entity_context(entity)),
                            json_mode=False)
     parsed = ai.parse_json_block(answer)
     tags = parsed.get("tags") if isinstance(parsed, dict) else parsed
@@ -141,7 +141,7 @@ async def suggest_metadata(entity_type: str, id: int) -> str:
         payload["status"] = "placeholder"
         return as_json(payload)
 
-    answer = await ai.chat(METADATA_SYSTEM, METADATA_USER.format(context=ai.entity_context(entity)))
+    answer = await ai.chat(METADATA_SYSTEM, METADATA_USER.replace("<<CONTEXT>>", ai.entity_context(entity)))
     parsed = ai.parse_json_block(answer)
     fields = parsed.get("fields") if isinstance(parsed, dict) else parsed
     payload["suggestions"] = [f for f in (fields or []) if isinstance(f, dict) and f.get("key")]
@@ -162,14 +162,14 @@ async def apply_tag_suggestions(entity_type: str, id: int, tags: list[str]) -> s
     eid = parse_id(id)
     await api.create(f"{etype}/{eid}/tags", {"tags": cleaned})
     after = await api.get_json(f"{etype}/{eid}", cacheable=False)
-    current = (after or {}).get("tags") if isinstance(after, dict) else None
-    applied = [t for t in cleaned if isinstance(current, list) and t in current]
+    current = normalize_tags((after or {}).get("tags")) if isinstance(after, dict) else []
+    applied = match_tags(cleaned, current)
     return as_json({
         "entity_type": etype,
         "entity_id": eid,
         "tags_requested": cleaned,
         "tags_applied": applied,
-        "tags_now": current if isinstance(current, list) else None,
+        "tags_now": current,
         "status": "ok" if len(applied) == len(cleaned) else "partial",
     })
 

@@ -112,6 +112,8 @@ answer with the upstream placeholder wording instead of failing — the response
 python tests/test_api_contract.py     # offline: request shapes vs. the OpenAPI spec
 python tests/test_tools_offline.py    # offline: all 41 tools against a stub eLabFTW
 python tests/test_transports.py       # offline: stdio + stateless HTTP, real MCP client
+python tests/test_ai_tools.py         # offline: AI tools vs. a local LLM stub (no quota spent)
+python tests/test_ai_tools.py --live  # live instance + local LLM stub
 python tests/test_live_tools.py       # live: all 41 tools against a real instance
 python tests/test_proxy_live.py       # live: register flow, scope, protocol eras
 ```
@@ -126,7 +128,9 @@ Status of the last full run (eLabFTW 6.0.1, MCP Python SDK 2.2.0):
 |---|---|
 | `test_live_tools.py` — every tool against the live instance | **46 / 46 checks PASS**, test data cleaned up |
 | `test_tools_offline.py` — every tool against the stub | **45 / 45 PASS** |
-| `test_api_contract.py` — requests vs. OpenAPI (83 paths, 103 requests) | **PASS** |
+| `test_api_contract.py` — requests vs. OpenAPI (83 paths, 104 requests) | **PASS** |
+| `test_ai_tools.py` — AI tools against a local OpenAI-compatible stub | **15 / 15 PASS** |
+| `test_ai_tools.py --live` — same, but the entry comes from the real instance | **17 / 17 PASS** |
 | `test_transports.py` — stdio + stateless HTTP + legacy handshake | **8 / 8 PASS** |
 | `test_proxy_live.py` — register, scope, tokens, audit | **13 / 13 PASS** |
 
@@ -139,6 +143,8 @@ Status of the last full run (eLabFTW 6.0.1, MCP Python SDK 2.2.0):
 | `deadline` is accepted on a step PATCH, `deadline_notif` is not (HTTP 400) | `add_step` sets the deadline in a follow-up PATCH and reports the stored value; `deadline_notif` is reported as unsupported instead of silently dropped |
 | `metadata` must be sent as a **JSON string**; a nested object produces HTTP 500 / MySQL 3140 | `update_entity_metadata` serialises before PATCHing |
 | Links are stored on one side only: `/{type}/{id}/experiments_links` lists own links, rows carry `entityid` | outgoing via the subresource, incoming via `?related=<id>&related_origin=<type>` |
+| Tags are canonicalised on write (`tga` becomes `TGA` if the team already knows the tag) and the entity payload reports them as a `a|b|c` string | tag read-backs compare case-insensitively and always return a list |
+| `DELETE` is a soft delete (`state=3`): the record disappears from listings but `GET` still answers | the live suites verify removal through the listing instead of a 404 |
 | Single-entity GETs can be very large (item types with long HTML bodies) | results are always valid JSON: long strings are shortened before anything is truncated |
 
 Response statuses used by the write tools: `created`, `updated`, `deleted`, `uploaded`,

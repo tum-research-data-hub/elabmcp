@@ -63,6 +63,31 @@ def build_list_response(results: list[Any], *, limit: int, offset: int,
     }
 
 
+def normalize_tags(value: Any) -> Any:
+    """eLabFTW returns tags either as a list or as a "a|b|c" string — always expose a list."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [t for t in (part.strip() for part in value.split("|")) if t]
+    if isinstance(value, list):
+        out: list[Any] = []
+        for item in value:
+            if isinstance(item, dict) and "tag" in item:
+                out.append(item["tag"])
+            elif isinstance(item, str):
+                out.append(item)
+            else:
+                out.append(item)
+        return out
+    return value
+
+
+def match_tags(requested: list[str], stored: Any) -> list[str]:
+    """Which requested tags the server stored — eLabFTW canonicalises casing ("tga" -> "TGA")."""
+    have = {str(tag).casefold(): tag for tag in normalize_tags(stored)}
+    return [have[str(tag).casefold()] for tag in requested if str(tag).casefold() in have]
+
+
 ENTITY_CORE_FIELDS = (
     "id", "title", "date", "category", "category_title", "status", "status_title",
     "tags", "canread", "canwrite", "rating", "custom_id", "state", "created_at",
@@ -75,6 +100,8 @@ def compact_entity(entity: dict[str, Any], *, drop_body: bool = False) -> dict[s
     if not isinstance(entity, dict):
         return {"value": entity}
     out = {k: v for k, v in entity.items() if k in ENTITY_CORE_FIELDS}
+    if "tags" in out:
+        out["tags"] = normalize_tags(out["tags"])
     body = entity.get("body")
     if not drop_body and body:
         out["body"] = body

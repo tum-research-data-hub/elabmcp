@@ -11,7 +11,7 @@ from ..client import parse_id
 from ..instance import mcp
 from ..responses import (
     as_json, build_list_response, comment_summary, compact_entity, compact_list,
-    step_summary, upload_summary,
+    normalize_tags, step_summary, upload_summary,
 )
 from ..validation import (
     clamp_limit, normalize_ids_to_csv, normalize_offset, normalize_order, normalize_query,
@@ -76,6 +76,8 @@ async def _get_entity(entity_type: str, entity_id: Any, *, enrich: bool = True) 
     entity = await api.get_json(f"{entity_type}/{eid}")
     if isinstance(entity, dict):
         entity = {k: v for k, v in entity.items() if k != "body_html"}
+        if "tags" in entity:
+            entity["tags"] = normalize_tags(entity["tags"])
     key = {"experiments": "experiment", "items": "item",
            "experiments_templates": "experiment_template", "items_types": "item_type"}.get(
         entity_type, entity_type.rstrip("s"))
