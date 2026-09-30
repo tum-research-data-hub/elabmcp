@@ -190,3 +190,11 @@ eLabFTW instance, the databases, Caddy and the two Streamlit apps keep running u
 | Provenance | Key `elabrmcp_provenance` is kept, `source` reports `elabftw-mcp` |
 | Team capability flags | A missing `users_canwrite_*` flag allows the call (the API enforces permissions) instead of denying it |
 | Low-level/inventory/compound flags | Present in the config for compatibility; the API is called directly |
+
+## License
+
+MIT, see `LICENSE`.
+
+This server is a rewrite of Marvin Luepke's `elabMCP` R server and its `elabR` library,
+both MIT licensed. The tool surface, the response shapes and the runtime quirks documented
+below follow those sources; the credits are in the section above.
