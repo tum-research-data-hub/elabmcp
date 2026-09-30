@@ -10,9 +10,10 @@ services:
       MCP_TOKEN_EXPIRY_DAYS: "30"
       ELABFTW_MCP_CONFIG: /app/config.yml
       ELABFTW_MCP_AUDIT_LOG: /app/logs/audit.jsonl
-      # AI tools (optional): any OpenAI-compatible endpoint
-      ELABFTW_MCP_AI_KEY: ${ELABFTW_MCP_AI_KEY:-}
-      ELABFTW_MCP_AI_BASE_URL: ${ELABFTW_MCP_AI_BASE_URL:-}
+      # AI tools (optional): any OpenAI-compatible endpoint. These are the names
+      # config.py actually reads (ELABFTW_MCP_AI_API_KEY / _BASE_URL / _MODEL).
+      ELABFTW_MCP_AI_API_KEY: ${ELABFTW_MCP_AI_API_KEY:-${OPENAI_API_KEY:-}}
+      ELABFTW_MCP_AI_BASE_URL: ${ELABFTW_MCP_AI_BASE_URL:-${OPENAI_BASE_URL:-}}
       ELABFTW_MCP_AI_MODEL: ${ELABFTW_MCP_AI_MODEL:-gpt-4o}
     volumes:
       - ./config.yml:/app/config.yml:ro
