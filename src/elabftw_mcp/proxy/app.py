@@ -225,6 +225,20 @@ class URLPrefixFixMiddleware(BaseHTTPMiddleware):
         return response
 
 
+def client_ip(request: Request) -> str:
+    """The caller's address, also when we sit behind a reverse proxy.
+
+    Caddy sets X-Forwarded-For; without it every registration would share one
+    rate-limit bucket, because the direct peer is the proxy container.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else "unknown"
+
+
 def create_app(config: Config | None = None) -> FastAPI:
     config = config or get_config()
     set_config(config)
@@ -254,9 +268,9 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.post("/register")
     async def register_post(request: Request) -> HTMLResponse:
-        client_ip = request.client.host if request.client else "unknown"
-        if not limiter.allow(client_ip):
-            audit("register_rate_limited", ip=client_ip)
+        caller = client_ip(request)
+        if not limiter.allow(caller):
+            audit("register_rate_limited", ip=caller)
             return HTMLResponse(register_ui.error_page(
                 "Too many registration attempts", "Please wait a minute and try again."),
                 status_code=429)
@@ -303,7 +317,7 @@ def create_app(config: Config | None = None) -> FastAPI:
             return HTMLResponse(register_ui.error_page("Server misconfigured", str(exc)),
                                 status_code=500)
         forwarded = request.headers.get("x-forwarded-proto", "https")
-        host = request.headers.get("host", "localhost")
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host", "localhost")
         personal = f"{forwarded}://{host}{prefix}/mcp?token={token}"
         audit("register_token_issued", base_url=base_url, profile=profile,
               tools="all" if enabled is None else len(enabled))

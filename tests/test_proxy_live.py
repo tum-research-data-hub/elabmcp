@@ -214,6 +214,21 @@ def main() -> int:
                           json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
         check(resp.status_code == 401, f"invalid token -> HTTP {resp.status_code}")
 
+        print("-- rate limiting behind a proxy --")
+        # The direct peer is the proxy, so the caller has to come from
+        # X-Forwarded-For; otherwise every registration shares one bucket.
+        statuses = []
+        for _ in range(11):
+            resp = httpx.post(f"{base}/register", timeout=20.0,
+                              headers={"X-Forwarded-For": "203.0.113.7"},
+                              data={"api_key": "x", "base_url": BASE_URL})
+            statuses.append(resp.status_code)
+        check(429 in statuses, f"the 11th attempt from one address is limited ({sorted(set(statuses))})")
+        other = httpx.post(f"{base}/register", timeout=20.0,
+                           headers={"X-Forwarded-For": "203.0.113.8"},
+                           data={"api_key": "x", "base_url": BASE_URL})
+        check(other.status_code != 429, f"a different address keeps its own bucket (HTTP {other.status_code})")
+
         audit_file = pathlib.Path(env["ELABFTW_MCP_AUDIT_LOG"])
         check(audit_file.exists() and "register_token_issued" in audit_file.read_text(encoding="utf-8"),
               "audit log records the registration")
