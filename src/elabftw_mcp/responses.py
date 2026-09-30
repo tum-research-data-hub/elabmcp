@@ -91,24 +91,25 @@ def match_tags(requested: list[str], stored: Any) -> list[str]:
 ENTITY_CORE_FIELDS = (
     "id", "title", "date", "category", "category_title", "status", "status_title",
     "tags", "canread", "canwrite", "rating", "custom_id", "state", "created_at",
-    "modified_at", "userid", "fullname", "elabid", "up_item_id", "is_pinned",
 )
+
+# Fields that are derived duplicates and are dropped from every response; everything
+# else is passed through, because the reference implementation returns whole rows and
+# a trimmed projection would silently hide fields a client may rely on.
+ENTITY_DROP_FIELDS = ("body_html",)
 
 
 def compact_entity(entity: dict[str, Any], *, drop_body: bool = False) -> dict[str, Any]:
-    """Trim an entity to the fields a model actually uses, keep unknown ones out."""
+    """Pass a row through (minus derived duplicates), tags normalised to a list."""
     if not isinstance(entity, dict):
         return {"value": entity}
-    out = {k: v for k, v in entity.items() if k in ENTITY_CORE_FIELDS}
+    out = {k: v for k, v in entity.items() if k not in ENTITY_DROP_FIELDS}
+    if drop_body:
+        out.pop("body", None)
     if "tags" in out:
         out["tags"] = normalize_tags(out["tags"])
-    body = entity.get("body")
-    if not drop_body and body:
-        out["body"] = body
-    if "metadata" in entity and entity["metadata"]:
-        out["metadata"] = entity["metadata"]
-    if "extra_fields" in entity and entity["extra_fields"]:
-        out["metadata"] = entity["extra_fields"]
+    if "metadata" not in out and out.get("extra_fields"):
+        out["metadata"] = out["extra_fields"]
     return out
 
 

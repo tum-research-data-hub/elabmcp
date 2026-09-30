@@ -194,7 +194,21 @@ def main() -> int:
         check(n_tools == 41 and negotiated == "2026-07-28",
               f"SDK client: {n_tools} tools, negotiated {negotiated}")
 
-        print("\n-- auth --")
+        print("-- X-Write-Scope header (compatibility with the old proxy) --")
+        write_args = {"from_type": "experiments", "from_id": 999999, "to_type": "items",
+                      "to_id": 999998, "dry_run": False}
+        resp, body = rpc(base, "tools/call", {"name": "ensure_link", "arguments": write_args},
+                         token=full, headers={"X-Write-Scope": "read"})
+        text = (result_text(body) or json.dumps(body)).replace(chr(10), " ")
+        check("not permitted" in text.lower() and "scope" in text.lower(),
+              "X-Write-Scope: read narrows a full token", text[:70])
+        resp, body = rpc(base, "tools/call", {"name": "ensure_link", "arguments": write_args},
+                         token=full)
+        text = (result_text(body) or json.dumps(body)).replace(chr(10), " ")
+        check("not permitted" not in text.lower(),
+              "without the header the same call reaches eLabFTW", text[:70])
+
+        print("-- auth --")
         resp = httpx.post(f"{base}/mcp?token=bogus", timeout=20.0,
                           headers={"Content-Type": "application/json"},
                           json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})

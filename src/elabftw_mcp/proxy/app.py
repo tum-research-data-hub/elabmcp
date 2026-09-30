@@ -89,6 +89,21 @@ def _extract_token(scope: Scope) -> str:
     return ""
 
 
+def _extract_header(scope: Scope, name: bytes) -> str:
+    for key, value in scope.get("headers", []):
+        if key.lower() == name:
+            return value.decode("latin-1").strip()
+    return ""
+
+
+# The old deployment let a client send X-Write-Scope per request; keep accepting it
+# (it can only narrow what the token allows, never widen it).
+_WRITE_SCOPES = {"read": "r", "readonly": "r", "r": "r",
+                 "hybrid": "h", "h": "h",
+                 "full": "f", "f": "f"}
+_PROFILE_RANK = {"r": 0, "h": 1, "f": 2}
+
+
 class MCPTokenMiddleware:
     """Per-request credentials for /mcp; 401 for unreadable or expired tokens.
 
@@ -117,7 +132,12 @@ class MCPTokenMiddleware:
             return
 
         if payload:
-            set_credentials(payload["u"], payload["k"], payload.get("p"), payload.get("t"))
+            profile = payload.get("p") or "r"
+            header_scope = _WRITE_SCOPES.get(_extract_header(scope, b"x-write-scope").lower())
+            if header_scope and _PROFILE_RANK[header_scope] < _PROFILE_RANK.get(profile, 0):
+                audit("mcp_write_scope_narrowed", token_profile=profile, request_scope=header_scope)
+                profile = header_scope
+            set_credentials(payload["u"], payload["k"], profile, payload.get("t"))
             audit("mcp_request", user=payload.get("p"), tools=len(payload.get("t") or []))
         await self.app(scope, receive, send)
 

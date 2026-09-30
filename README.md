@@ -151,6 +151,27 @@ Response statuses used by the write tools: `created`, `updated`, `deleted`, `upl
 `linked`, `already_linked`, `would_link`, `unlinked`, `already_absent`, `would_unlink`, `ok`,
 `partial` — the same vocabulary across all write tools.
 
+## Relation to the previous `/el` deployment
+
+Measured against the running R-based service (`researchmcp.duckdns.org/el`, reproduced by
+`tests/diagnostics/compare_with_deployed.py`): the **tool surface is identical** — 41 tools on
+both sides, none missing, none extra — and the same entities and ids come back (categories,
+statuses and user info 100% identical, `get_experiment` 81%).
+
+Deliberate differences:
+
+| | previous deployment | this server |
+|---|---|---|
+| answer format | R print output (`list(limit = 2, …)`) | JSON |
+| entity rows | whole row | whole row (only `body_html` is dropped, tags normalised to a list of strings) |
+| protocol | 2025-06-18 only | 2026-07-28 stateless plus legacy handshakes |
+| AI tools | bootstrap placeholders | real LLM calls, same response contract |
+| `X-Write-Scope` | forwarded to the worker | accepted, can only narrow the token's profile |
+| personal URLs | HMAC(instance, key, profile, tools, expiry) | byte-compatible format, verified with the same `MCP_JWT_SECRET` |
+
+Only `/el` (proxy + R worker) is replaced. `/nm` (NOMAD MCP), `/dt` (DataTagger MCP), the
+eLabFTW instance, the databases, Caddy and the two Streamlit apps keep running untouched.
+
 ## Documented differences from the upstream R implementation
 
 | Topic | Behaviour here |
