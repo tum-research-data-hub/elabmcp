@@ -118,6 +118,13 @@ python tests/test_live_tools.py       # live: all 41 tools against a real instan
 python tests/test_proxy_live.py       # live: register flow, scope, protocol eras
 ```
 
+For a running deployment there are two checks that need nothing but a URL:
+
+```bash
+python tests/diagnostics/deployed_e2e.py    # one endpoint: register, 41 tools, read + write + cleanup
+python3 tests/diagnostics/service_sweep.py  # the whole host: web hosts, register pages, /el, /dt, /nm
+```
+
 Live suites read the key from `../.elab_key` (never printed), tag everything they create as
 `elabmcp-test-<timestamp>` and delete it again. `tests/diagnostics/` holds the small probes used
 to pin down the API behaviour on a new instance (step fields, link direction, metadata payload).
